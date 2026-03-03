@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <poll.h>
 
-#define SLIM2DIRETTA_VERSION "1.0.0"
+#define SLIM2DIRETTA_VERSION "1.1.0"
 
 // ============================================
 // Async Logging Infrastructure
