@@ -586,8 +586,6 @@ ExecStart=/usr/bin/python3 /opt/slim2diretta/webui/diretta_webui.py \
     --port 8081
 Restart=on-failure
 RestartSec=5
-ProtectSystem=strict
-ReadWritePaths=/etc/default/
 ProtectHome=true
 PrivateTmp=true
 
