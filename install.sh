@@ -391,10 +391,13 @@ setup_systemd_service() {
         return 0
     fi
 
-    print_info "1. Installing binary..."
+    print_info "1. Installing binary and startup script..."
     sudo cp "$BINARY_PATH" "$INSTALL_BIN/slim2diretta"
     sudo chmod +x "$INSTALL_BIN/slim2diretta"
+    sudo cp "$SCRIPT_DIR/start-slim2diretta.sh" "$INSTALL_BIN/start-slim2diretta.sh"
+    sudo chmod +x "$INSTALL_BIN/start-slim2diretta.sh"
     print_success "Binary installed: $INSTALL_BIN/slim2diretta"
+    print_success "Startup script installed: $INSTALL_BIN/start-slim2diretta.sh"
 
     print_info "2. Installing systemd service..."
     sudo cp "$SCRIPT_DIR/slim2diretta@.service" "$SERVICE_FILE"
@@ -515,9 +518,11 @@ update_binary() {
         done
     fi
 
-    # Copy new binary
+    # Copy new binary and startup script
     sudo cp "$BINARY_PATH" "$INSTALL_BIN/slim2diretta"
     sudo chmod +x "$INSTALL_BIN/slim2diretta"
+    sudo cp "$SCRIPT_DIR/start-slim2diretta.sh" "$INSTALL_BIN/start-slim2diretta.sh"
+    sudo chmod +x "$INSTALL_BIN/start-slim2diretta.sh"
     print_success "Binary updated: $INSTALL_BIN/slim2diretta"
 
     # Restart stopped instances
@@ -811,10 +816,11 @@ uninstall() {
         print_info "Stopped and disabled $svc"
     done
 
-    # Remove binary
+    # Remove binary and startup script
     if [ -f "$INSTALL_BIN/slim2diretta" ]; then
         sudo rm "$INSTALL_BIN/slim2diretta"
-        print_success "Binary removed"
+        sudo rm -f "$INSTALL_BIN/start-slim2diretta.sh"
+        print_success "Binary and startup script removed"
     fi
 
     # Remove service file

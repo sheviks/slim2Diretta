@@ -219,6 +219,13 @@ Config parseArguments(int argc, char* argv[]) {
         else if (arg == "--target-profile-limit" && i + 1 < argc) {
             config.targetProfileLimitTime = static_cast<unsigned int>(std::atoi(argv[++i]));
         }
+        else if (arg == "--rt-priority" && i + 1 < argc) {
+            g_rtPriority = std::atoi(argv[++i]);
+            if (g_rtPriority < 1 || g_rtPriority > 99) {
+                std::cerr << "Warning: rt-priority should be between 1-99" << std::endl;
+                g_rtPriority = std::max(1, std::min(99, g_rtPriority));
+            }
+        }
         else if (arg == "--max-rate" && i + 1 < argc) {
             config.maxSampleRate = std::atoi(argv[++i]);
         }
@@ -261,6 +268,7 @@ Config parseArguments(int argc, char* argv[]) {
                       << "                             2048=NoSleepForce, 4096=LimitResend,\n"
                       << "                             8192=NoJumboFrame, 16384=NoFirewall, 32768=NoRawSocket\n"
                       << "  --mtu <bytes>              MTU override (default: auto)\n"
+                      << "  --rt-priority <1-99>       SCHED_FIFO real-time priority for worker thread (default: 50)\n"
                       << "\n"
                       << "Audio:\n"
                       << "  --max-rate <hz>        Max sample rate (default: 1536000)\n"

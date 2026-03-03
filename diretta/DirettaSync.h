@@ -103,6 +103,7 @@ extern LogRing* g_logRing;
 //=============================================================================
 
 extern bool g_verbose;
+extern int g_rtPriority;
 #include "LogLevel.h"
 
 #ifdef NOLOG
