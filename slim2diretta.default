@@ -1,8 +1,12 @@
 # /etc/default/slim2diretta
 # Configuration for slim2diretta systemd service
 #
+# Diretta target index (required for slim2diretta.service):
+#   Run 'sudo slim2diretta --list-targets' to find available targets.
+TARGET=1
+#
 # Options are appended to the command line.
-# The target index is set by the service instance name:
+# With template service (slim2diretta@.service), target is set by instance name:
 #   systemctl start slim2diretta@1    -> --target 1
 #   systemctl start slim2diretta@2    -> --target 2
 #

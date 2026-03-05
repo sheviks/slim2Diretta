@@ -202,7 +202,7 @@ bool DirettaSync::discoverTarget() {
     DIRETTA::Find::Setting findSettings;
     findSettings.Loopback = false;
     findSettings.ProductID = 0;
-    findSettings.Name = "DirettaRenderer";
+    findSettings.Name = "slim2diretta";
     findSettings.MyID = 0x44525400;
 
     DIRETTA::Find find(findSettings);
@@ -953,12 +953,12 @@ bool DirettaSync::reopenForFormatChange() {
     interruptibleWait(m_transitionMutex, m_transitionCv, m_transitionWakeup,
                       static_cast<int>(m_config.formatSwitchDelayMs));
 
-    ACQUA::Clock cycleTime = ACQUA::Clock::MicroSeconds(m_config.cycleTime);
+    ACQUA::Clock infoCycle = ACQUA::Clock::MicroSeconds(m_config.infoCycle);
 
     if (!DIRETTA::Sync::open(
             DIRETTA::Sync::THRED_MODE(m_config.threadMode),
-            cycleTime, 0, "DirettaRenderer", 0x44525400,
-            -1, -1, 0, DIRETTA::Sync::MSMODE_MS3)) {
+            infoCycle, 0, "slim2diretta", 0x44525400,
+            -1, -1, 0, DIRETTA::Sync::MSMODE_AUTO)) {
         std::cerr << "[DirettaSync] Failed to re-open sync" << std::endl;
         return false;
     }
