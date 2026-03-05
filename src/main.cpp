@@ -628,9 +628,14 @@ int main(int argc, char* argv[]) {
 
                         bool httpEof = false;
                         bool stmdSent = false;  // Gapless: send STMd once on EOF
+                        bool gaplessWaitDone = false;
+                        auto gaplessWaitStart = std::chrono::steady_clock::now();
+                        constexpr int GAPLESS_WAIT_MS = 2000;
+
                         while (audioTestRunning.load(std::memory_order_acquire) &&
                                (!httpEof || dsdReader->availableBytes() > 0 ||
-                                !dsdReader->isFinished())) {
+                                !dsdReader->isFinished() ||
+                                (stmdSent && !gaplessWaitDone && !hasPendingTrack.load(std::memory_order_acquire)))) {
 
                             // === PHASE 1: HTTP read + feed ===
                             // Flow control: don't read HTTP when internal buffer is large
@@ -659,10 +664,29 @@ int main(int argc, char* argv[]) {
                             // prepare the next track while we're still draining data.
                             if (httpEof && direttaOpened && !stmdSent) {
                                 stmdSent = true;
+                                gaplessWaitStart = std::chrono::steady_clock::now();
                                 LOG_INFO("[Audio] DSD stream complete: " << totalBytes
                                          << " bytes received, "
                                          << pushedDsdBytes << " DSD bytes pushed");
                                 slimproto->sendStat(StatEvent::STMd);
+                            }
+
+                            // === GAPLESS: stay in loop waiting for next track ===
+                            // Keep the loop alive so ring buffer doesn't run empty.
+                            // When pending arrives, we break and chain immediately.
+                            if (stmdSent && dsdReader->availableBytes() == 0 &&
+                                dsdReader->isFinished()) {
+                                if (hasPendingTrack.load(std::memory_order_acquire)) {
+                                    break;  // Got pending → exit loop to chain
+                                }
+                                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    std::chrono::steady_clock::now() - gaplessWaitStart).count();
+                                if (elapsed >= GAPLESS_WAIT_MS) {
+                                    gaplessWaitDone = true;
+                                    break;  // Timeout → exit loop normally
+                                }
+                                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                                continue;  // Stay in loop
                             }
 
                             // === PHASE 2: Format detection ===
@@ -776,54 +800,8 @@ int main(int argc, char* argv[]) {
                             }
                         }
 
-                        // === DRAIN remaining data ===
-                        // STMd was already sent in the main loop when HTTP EOF was detected
-                        dsdReader->setEof();
-
-                        // Drain remaining DSD data
-                        while (direttaOpened &&
-                               audioTestRunning.load(std::memory_order_acquire)) {
-                            // Wait for DirettaSync space
-                            while (audioTestRunning.load(std::memory_order_acquire)) {
-                                if (direttaPtr->isPaused()) {
-                                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                                    continue;
-                                }
-                                if (direttaPtr->getBufferLevel() > 0.95f) {
-                                    std::unique_lock<std::mutex> lock(direttaPtr->getFlowMutex());
-                                    direttaPtr->waitForSpace(lock, std::chrono::milliseconds(5));
-                                    continue;
-                                }
-                                break;
-                            }
-                            size_t bytes = dsdReader->readPlanar(planarBuf, DSD_PLANAR_BUF);
-                            if (bytes == 0) break;
-                            size_t numSamples = (bytes * 8) / detectedChannels;
-                            direttaPtr->sendAudio(planarBuf, numSamples);
-                            pushedDsdBytes += bytes;
-
-                            if (byteRateTotal > 0) {
-                                uint64_t totalMs = (pushedDsdBytes * 1000) / byteRateTotal;
-                                slimproto->updateElapsed(
-                                    static_cast<uint32_t>(totalMs / 1000),
-                                    static_cast<uint32_t>(totalMs));
-                            }
-                        }
-
-                        // === GAPLESS: wait for LMS to send next strm-s ===
-                        // Ring buffer still has audio being consumed by DAC
-                        if (!hasPendingTrack.load(std::memory_order_acquire) &&
-                            audioTestRunning.load(std::memory_order_acquire)) {
-                            LOG_DEBUG("[Gapless] DSD: waiting for next track...");
-                            auto waitStart = std::chrono::steady_clock::now();
-                            constexpr int GAPLESS_WAIT_MS = 2000;
-                            while (!hasPendingTrack.load(std::memory_order_acquire) &&
-                                   audioTestRunning.load(std::memory_order_acquire) &&
-                                   std::chrono::duration_cast<std::chrono::milliseconds>(
-                                       std::chrono::steady_clock::now() - waitStart).count() < GAPLESS_WAIT_MS) {
-                                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                            }
-                        }
+                        // Drain + gapless wait was handled inside the main loop.
+                        // dsdReader->setEof() was called when httpEof was detected.
 
                         // === GAPLESS CHECK: chain to next DSD track? ===
                         if (hasPendingTrack.load(std::memory_order_acquire)) {
