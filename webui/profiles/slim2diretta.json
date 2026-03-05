@@ -1,6 +1,6 @@
 {
     "product_name": "slim2diretta",
-    "service_name": "auto",
+    "service_name": "slim2diretta",
     "config_path": "/etc/default/slim2diretta",
     "config_type": "cli_opts",
     "config_var": "SLIM2DIRETTA_OPTS",

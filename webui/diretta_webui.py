@@ -113,33 +113,6 @@ def save_settings(profile, settings):
         ShellVarConfig.save(config_path, settings)
 
 
-def detect_service_name(profile):
-    """Auto-detect the installed service name.
-
-    Checks for standard service first, then template service.
-    Falls back to profile value if neither is found.
-    """
-    config_path = profile.get('config_path', '')
-
-    # Check standard service
-    if os.path.exists('/etc/systemd/system/slim2diretta.service'):
-        return 'slim2diretta'
-
-    # Check template service — read TARGET from config to build instance name
-    if os.path.exists('/etc/systemd/system/slim2diretta@.service'):
-        target = '1'
-        if os.path.exists(config_path):
-            try:
-                data = ShellVarConfig.load(config_path)
-                target = data.get('TARGET', '1') or '1'
-            except Exception:
-                pass
-        return f'slim2diretta@{target}'
-
-    # Fallback
-    name = profile.get('service_name', '')
-    return name if name != 'auto' else 'slim2diretta'
-
 
 def restart_service(service_name):
     """Restart a systemd service. Returns (success, message)."""
@@ -334,7 +307,7 @@ class ConfigHandler(BaseHTTPRequestHandler):
             self._send_redirect(f'/?err=Save failed: {e}')
             return
 
-        service = detect_service_name(self.profile)
+        service = self.profile.get('service_name', '')
         if service:
             ok, msg = restart_service(service)
             if ok:
@@ -346,7 +319,7 @@ class ConfigHandler(BaseHTTPRequestHandler):
 
     def _handle_restart(self):
         """Restart service only (no config change)."""
-        service = detect_service_name(self.profile)
+        service = self.profile.get('service_name', '')
         if not service:
             self._send_redirect('/?err=No service configured.')
             return

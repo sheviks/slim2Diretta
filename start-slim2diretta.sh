@@ -1,16 +1,15 @@
 #!/bin/bash
 # slim2diretta - Startup Wrapper Script
 # This script applies process priority settings and starts slim2diretta.
-# Usage:
-#   start-slim2diretta.sh <target-index>   (template service: slim2diretta@1.service)
-#   start-slim2diretta.sh                  (standard service: uses TARGET from config)
+# Called by systemd: slim2diretta.service
+# TARGET is read from /etc/default/slim2diretta (EnvironmentFile)
 
 set -e
 
-# Target index: from argument (template service) or TARGET env var (standard service)
+# Target index from config file or optional command-line argument
 TARGET_INDEX="${1:-${TARGET:-}}"
 if [ -z "$TARGET_INDEX" ]; then
-    echo "ERROR: No target specified. Set TARGET in /etc/default/slim2diretta or use: start-slim2diretta.sh <target-index>" >&2
+    echo "ERROR: No target specified. Set TARGET in /etc/default/slim2diretta" >&2
     exit 1
 fi
 
